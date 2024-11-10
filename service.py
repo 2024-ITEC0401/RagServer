@@ -87,6 +87,36 @@ def send_to_gemini(image):
 
 @service_bp.route("/get_outfit_info", methods=["POST"])
 def get_outfit_info():
+    """
+        이미지 파일을 받아 Cloud Storage에 이미지 저장 후 URL과 코디 정보를 반환하는 API
+        ---
+        tags:
+          - Outfit
+        consumes:
+          - multipart/form-data
+        parameters:
+          - name: image
+            in: formData
+            type: file
+            required: true
+            description: 코디 정보를 추출할 이미지 파일
+        responses:
+          200:
+            description: 성공적으로 코디 정보가 생성된 경우
+            schema:
+              type: object
+              properties:
+                outfit_info:
+                  type: object
+                  description: 이미지로부터 추출된 코디 정보
+                image_uri:
+                  type: string
+                  description: 업로드된 이미지의 GCS URI
+          400:
+            description: 이미지 파일이 제공되지 않았거나 잘못된 요청
+          500:
+            description: 서버 오류 또는 Gemini API 오류
+        """
     if 'image' not in request.files:
         return jsonify({"error": "No image file provided"}), 400
 
