@@ -1,4 +1,7 @@
+import json
 import os
+import re
+
 from dotenv import load_dotenv
 from flask import Blueprint, request, jsonify, current_app
 from google.cloud import storage
@@ -50,19 +53,36 @@ def send_to_gemini(image):
     image_uri = upload_image_to_gcs(image)
 
     # 모델 초기화
-    multimodal_model = GenerativeModel(model_name="gemini-1.0-pro-vision-001")
+    multimodal_model = GenerativeModel(model_name="gemini-1.5-flash-002")
 
     # 이미지 URI와 프롬프트 전송
     response = multimodal_model.generate_content(
         [
             Part.from_uri(image_uri, mime_type="image/jpeg"),  # 이미지 URI 사용
             PROMPT_TEXT  # 하드코딩된 프롬프트
-        ]
+        ],
+        generation_config={
+            "temperature": 0.2,  # temperature 설정
+        }
     )
 
-    # 응답 데이터 파싱
-    outfit_info = response.text if response else "No response text found"
-    return outfit_info, image_uri  # 응답 텍스트와 이미지 URI 반환
+    # 불필요한 ```json 구문 제거 및 JSON 파싱
+    outfit_info_str = response.text if response else "No response text found"
+    json_match = re.search(r"\{.*\}", outfit_info_str, re.DOTALL)  # 중괄호로 시작하는 JSON 부분 추출
+
+    if json_match:
+        json_str = json_match.group(0)  # JSON 부분만 추출
+    else:
+        current_app.logger.error("No JSON data found in the response.")
+        json_str = "{}"  # JSON 부분이 없을 때 빈 객체 반환
+
+    try:
+        outfit_info_json = json.loads(json_str) if outfit_info_str else {}
+    except json.JSONDecodeError as e:
+        current_app.logger.error(f"JSON decode error: {e}")
+        outfit_info_json = {"error": "Invalid JSON format received"}
+
+    return outfit_info_json, image_uri
 
 
 @service_bp.route("/get_outfit_info", methods=["POST"])
