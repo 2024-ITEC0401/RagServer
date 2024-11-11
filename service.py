@@ -1,7 +1,6 @@
 import json
 import os
 import re
-
 from dotenv import load_dotenv
 from flask import Blueprint, request, jsonify, current_app
 from google.cloud import storage
@@ -22,7 +21,7 @@ service_bp = Blueprint('service', __name__)
 # GCP 설정
 PROMPT_TEXT = load_prompt("prompt.txt")  # 하드코딩된 프롬프트
 PROJECT_ID = os.getenv("PROJECT_ID")
-LOCATION = "us-central1"
+LOCATION = "asia-northeast3"
 BUCKET_NAME = os.getenv("BUCKET_NAME")  # Cloud Storage 버킷 이름
 
 # Vertex AI 초기화
