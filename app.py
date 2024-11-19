@@ -1,12 +1,38 @@
-from flask import Flask
+from flask import Flask, jsonify
+from service import service_bp
+from config import Config  # Config 클래스를 import 합니다.
+from flask_swagger import swagger
+from flask_swagger_ui import get_swaggerui_blueprint
 
 app = Flask(__name__)
+app.config.from_object(Config)  # Config 클래스를 적용합니다.
+app.register_blueprint(service_bp)
 
+# Swagger UI 설정
+SWAGGER_URL = '/swagger'  # Swagger UI에 접근할 경로
+API_URL = '/spec'  # Swagger JSON을 제공할 경로
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={'app_name': "Look4Me Rag Server"}
+)
+
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+
+@app.route('/spec')
+def spec():
+    swag = swagger(app)
+    swag['info']['title'] = "Look4Me Rag Server API"
+    swag['info']['description'] = "RAG, GCP, LLM 관련 API"
+    swag['info']['version'] = "1.0.0"
+    return jsonify(swag)
 
 @app.route('/')
-def hello_world():  # put application's code here
-    return 'Hello World!'
-
+def hello_world():
+    return "Hello World"
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
+
+#gcloud config get-value project
