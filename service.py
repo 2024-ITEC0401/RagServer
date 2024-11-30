@@ -105,12 +105,28 @@ def get_outfit_info():
             schema:
               type: object
               properties:
-                outfit_info:
-                  type: object
-                  description: 이미지로부터 추출된 코디 정보
-                image_uri:
+                imageUri:
                   type: string
-                  description: 업로드된 이미지의 GCS URI
+                name:
+                  type: string
+                mainCategory:
+                  type: string
+                subCategory:
+                  type: string
+                baseColor:
+                  type: string
+                pointColor:
+                  type: string
+                textile:
+                  type: string
+                pattern:
+                  type: string
+                season:
+                  type: string
+                style:
+                  type: string
+                description:
+                  type: string
           400:
             description: 이미지 파일이 제공되지 않았거나 잘못된 요청
           500:
@@ -125,7 +141,14 @@ def get_outfit_info():
     try:
         # Vertex AI Gemini API에 이미지와 텍스트 프롬프트 전송
         outfit_info, image_uri = send_to_gemini(image)
-        return jsonify({"outfit_info": outfit_info, "image_uri": image_uri})
+        # outfit_info의 속성을 최상위로 이동
+        if isinstance(outfit_info, dict):
+            response_data = {**outfit_info, "imageUri": image_uri}
+        else:
+            # outfit_info가 dict가 아닌 경우 빈 값 처리
+            response_data = {"imageUri": image_uri}
+
+        return jsonify(response_data)
     except Exception as e:
         current_app.logger.error(f"Error calling Gemini API: {e}")
         return jsonify({"error": str(e)}), 500

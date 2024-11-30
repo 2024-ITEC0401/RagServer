@@ -24,10 +24,8 @@
 ```json
 {
   "name": "캐주얼 반소매 티셔츠",
-  "category": {
-    "category": "상의",
-    "subCategory": "반소매 티셔츠"
-  },
+  "mainCategory": "상의",
+  "subCategory": "반소매 티셔츠",
   "baseColor": "파랑",
   "pointColor": "흰색",
   "textile": "면",
