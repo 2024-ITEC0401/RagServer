@@ -32,7 +32,7 @@ storage_client = storage.Client()
 
 
 def upload_image_to_gcs(image):
-    """이미지를 Cloud Storage에 업로드하고 URI 반환"""
+    """이미지를 Cloud Storage에 업로드하고 공개 URL 반환"""
     bucket = storage_client.bucket(BUCKET_NAME)
     blob_name = f"images/{uuid.uuid4()}.jpg"  # 고유한 이미지 이름 생성
     blob = bucket.blob(blob_name)
@@ -43,8 +43,11 @@ def upload_image_to_gcs(image):
     buffered.seek(0)
     blob.upload_from_file(buffered, content_type="image/jpeg")
 
-    # 이미지의 공개 URI 생성
-    return f"gs://{BUCKET_NAME}/{blob_name}"
+    # 파일을 공개로 설정
+    blob.make_public()
+
+    # 공개 URL 반환
+    return blob.public_url
 
 
 def send_to_gemini(image):
