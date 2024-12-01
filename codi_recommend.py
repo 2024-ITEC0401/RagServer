@@ -111,10 +111,96 @@ def recommend_codi_to_gemini(user_codi, rag_data):
 
     return codis_json
 
-
-
 @codi_recommend_bp.route("/get_codis", methods=["POST"])
 def get_codis():
+    """
+    코디 추천 API
+    ---
+    tags:
+      - Recommendation
+    summary: Generate outfit recommendations based on user clothing
+    description: This endpoint takes user clothing data as input and returns recommended outfits based on the input data.
+    consumes:
+      - application/json
+    produces:
+      - application/json
+    parameters:
+      - in: body
+        name: body
+        required: true
+        description: 옷장 데이터 전부. 특히 clothing_id가 중요함
+        schema:
+          type: object
+          properties:
+            clothing:
+              type: array
+              items:
+                type: object
+                properties:
+                  clothing_id:
+                    type: integer
+                    example: 1
+                  baseColor:
+                    type: string
+                    example: "파랑"
+                  description:
+                    type: string
+                    example: "부드러운 촉감의 남성용 울 니트 스웨터"
+                  mainCategory:
+                    type: string
+                    example: "상의"
+                  name:
+                    type: string
+                    example: "남성 울 니트"
+                  pattern:
+                    type: string
+                    example: "무지"
+                  pointColor:
+                    type: string
+                    nullable: true
+                    example: null
+                  season:
+                    type: string
+                    example: "가을"
+                  style:
+                    type: string
+                    example: "데일리"
+                  subCategory:
+                    type: string
+                    example: "니트"
+                  textile:
+                    type: string
+                    example: "니트/울"
+    responses:
+      200:
+        description: 코디를 1~10개 알아서 llm이 생성함. 몇개인지 특정 못함 괜찮나? 원하면 바꿀 수 있음
+        schema:
+          type: object
+          properties:
+            codis:
+              type: array
+              items:
+                type: object
+                properties:
+                  clothing_ids:
+                    type: array
+                    items:
+                      type: integer
+                    example: [1, 2, 8]
+                  description:
+                    type: string
+                    example: "부드러운 울 니트와 블랙 와이드 데님의 편안한 가을 남친룩."
+                  hashtags:
+                    type: array
+                    items:
+                      type: string
+                    example: ["남친룩", "가을코디", "캐주얼", "데일리룩", "편안함"]
+                  name:
+                    type: string
+                    example: "가을 남친룩"
+      400:
+        description: Invalid input
+    """
     # 사용자 옷
     user_closet = request.get_data(as_text=True)
 

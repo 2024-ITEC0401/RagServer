@@ -4,7 +4,6 @@ import re
 from dotenv import load_dotenv
 from flask import Blueprint, request, jsonify, current_app
 from google.cloud import storage
-from google.oauth2 import service_account
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 from io import BytesIO
