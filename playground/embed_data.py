@@ -6,7 +6,7 @@ from typing import List, Generator
 # 1. BigQuery에서 데이터 불러오기
 def load_data_from_bigquery(project_id: str, dataset_id: str, table_id: str) -> List[str]:
     client = bigquery.Client(project=project_id)
-    query = f"SELECT json FROM `{project_id}.{dataset_id}.{table_id}` ORDER BY uri LIMIT 200 OFFSET 0"
+    query = f"SELECT json FROM `{project_id}.{dataset_id}.{table_id}` ORDER BY uri LIMIT 1000 OFFSET 9000"
     query_job = client.query(query)
     results = query_job.result()
     # 텍스트 데이터를 리스트로 추출
