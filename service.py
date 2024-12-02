@@ -18,7 +18,7 @@ load_dotenv()
 service_bp = Blueprint('service', __name__)
 
 # GCP 설정
-PROMPT_TEXT = load_prompt("analysis_prompt.txt")  # 하드코딩된 프롬프트
+PROMPT_TEXT = load_prompt("prompt/analysis_prompt.txt")  # 하드코딩된 프롬프트
 PROJECT_ID = os.getenv("PROJECT_ID")
 LOCATION = "asia-northeast3"
 BUCKET_NAME = os.getenv("BUCKET_NAME")  # Cloud Storage 버킷 이름
