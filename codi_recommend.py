@@ -91,7 +91,7 @@ def recommend_codi_to_gemini(user_codi, rag_data):
             prompt
         ],
         generation_config={
-            "temperature": 1,  # temperature 설정
+            "temperature": 0.8,  # temperature 설정
         }
     )
 

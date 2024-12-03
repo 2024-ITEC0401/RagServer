@@ -13,7 +13,7 @@ from google.cloud import bigquery, aiplatform
 load_dotenv()
 
 # Blueprint 생성
-codi_recommend_bp = Blueprint('codi_recommend', __name__)
+nl_codi_recommend_bp = Blueprint('nl_codi_recommend', __name__)
 
 # GCP 설정
 PROJECT_ID = os.getenv("PROJECT_ID")
@@ -78,12 +78,12 @@ def query_similar_embeddings(project_id: str, dataset_id: str, table_id: str, us
     query_job = client.query(query)
     return query_job.result()
 
-def recommend_codi_to_gemini(user_codi, rag_data):
+def recommend_codi_to_gemini(user_codi, rag_data, natural_language):
     multimodal_model = GenerativeModel(model_name="gemini-1.5-flash-002")
 
-    prompt = load_prompt("codi_recommend_prompt.txt")
+    prompt = load_prompt("nl_codi_recommend_prompt.txt")
 
-    prompt = prompt.replace("{{USER_CLOTHES}}", user_codi).replace("{{RECOMMENDED_OUTFITS}}", rag_data)
+    prompt = prompt.replace("{{USER_CLOTHES}}", user_codi).replace("{{RECOMMENDED_OUTFITS}}", rag_data).replace("{{USER_REQUIREMENT}}", natural_language)
 
     # 이미지 URI와 프롬프트 전송
     response = multimodal_model.generate_content(
@@ -91,7 +91,7 @@ def recommend_codi_to_gemini(user_codi, rag_data):
             prompt
         ],
         generation_config={
-            "temperature": 1,  # temperature 설정
+            "temperature": 0.8,  # temperature 설정
         }
     )
 
@@ -111,111 +111,37 @@ def recommend_codi_to_gemini(user_codi, rag_data):
 
     return codis_json
 
-@codi_recommend_bp.route("/get_codis", methods=["POST"])
-def get_codis():
-    """
-    코디 추천 API
-    ---
-    tags:
-      - Recommendation
-    summary: Generate outfit recommendations based on user clothing
-    description: This endpoint takes user clothing data as input and returns recommended outfits based on the input data.
-    consumes:
-      - application/json
-    produces:
-      - application/json
-    parameters:
-      - in: body
-        name: body
-        required: true
-        description: 옷장 데이터 전부. 특히 clothing_id가 중요함
-        schema:
-          type: object
-          properties:
-            clothing:
-              type: array
-              items:
-                type: object
-                properties:
-                  clothing_id:
-                    type: integer
-                    example: 1
-                  baseColor:
-                    type: string
-                    example: "파랑"
-                  description:
-                    type: string
-                    example: "부드러운 촉감의 남성용 울 니트 스웨터"
-                  mainCategory:
-                    type: string
-                    example: "상의"
-                  name:
-                    type: string
-                    example: "남성 울 니트"
-                  pattern:
-                    type: string
-                    example: "무지"
-                  pointColor:
-                    type: string
-                    nullable: true
-                    example: null
-                  season:
-                    type: string
-                    example: "가을"
-                  style:
-                    type: string
-                    example: "데일리"
-                  subCategory:
-                    type: string
-                    example: "니트"
-                  textile:
-                    type: string
-                    example: "니트/울"
-    responses:
-      200:
-        description: 코디를 1~10개 알아서 llm이 생성함. 몇개인지 특정 못함 괜찮나? 원하면 바꿀 수 있음
-        schema:
-          type: object
-          properties:
-            codis:
-              type: array
-              items:
-                type: object
-                properties:
-                  clothing_ids:
-                    type: array
-                    items:
-                      type: integer
-                    example: [1, 2, 8]
-                  description:
-                    type: string
-                    example: "부드러운 울 니트와 블랙 와이드 데님의 편안한 가을 남친룩."
-                  hashtags:
-                    type: array
-                    items:
-                      type: string
-                    example: ["남친룩", "가을코디", "캐주얼", "데일리룩", "편안함"]
-                  name:
-                    type: string
-                    example: "가을 남친룩"
-      400:
-        description: Invalid input
-    """
+@nl_codi_recommend_bp.route("/get_nl_codi", methods=["POST"])
+def get_codi():
+
     # 사용자 옷
-    user_closet = request.get_data(as_text=True)
+    nl_codi_request = request.get_json()
 
     # 사용자 코디 데이터를 Vertex AI 임베딩 모델을 사용해 임베딩 벡터로 변환
-    texts = [user_closet]
-    user_embedding = embed_texts(texts, PROJECT_ID, LOCATION, MODEL_NAME)
+    natural_language = nl_codi_request.get('natural_language')
+    clothing = nl_codi_request.get('clothing')
+
+    clothing_list = [clothing]
+    natural_language_list = [natural_language]
+    clothing_embedding = embed_texts(clothing_list, PROJECT_ID, LOCATION, MODEL_NAME)
+    natural_language_embedding = embed_texts(natural_language_list, PROJECT_ID, LOCATION, MODEL_NAME)
 
     # BigQuery에서 코사인 유사도 계산 및 상위 N개 결과 가져오기
-    top_results = query_similar_embeddings(PROJECT_ID, DATASET_ID, TABLE_ID, user_embedding[0], top_n=5)
+    a_result = query_similar_embeddings(PROJECT_ID, DATASET_ID, TABLE_ID, clothing_embedding[0], top_n=3)
+    b_result = query_similar_embeddings(PROJECT_ID, DATASET_ID, TABLE_ID, natural_language_embedding[0], top_n=3)
+
+    print("***** a_result = ", a_result)
+    print("***** b_result = ", b_result)
 
     rag_data = ""
-    for row in top_results:
+    for row in a_result:
+        rag_data += row['codi_json']
+    for row in b_result:
         rag_data += row['codi_json']
 
-    response = recommend_codi_to_gemini(user_closet, rag_data)
+    print("***** rag_data = ", rag_data)
+
+    response = recommend_codi_to_gemini(clothing, rag_data, natural_language)
     print("***** response = ", response)
     try:
         return jsonify(response), 200

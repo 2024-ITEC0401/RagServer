@@ -1,0 +1,18 @@
+{
+  "natural_language": "무슨무슨 옷을 추천해줘 라던가",
+  "clothing": [
+    {
+      "baseColor": "파랑",
+      "clothing_id": 1,
+      "description": "부드러운 촉감의 남성용 울 니트 스웨터",
+      "mainCategory": "상의",
+      "name": "남성 울 니트",
+      "pattern": "무지",
+      "pointColor": null,
+      "season": "가을",
+      "style": "데일리",
+      "subCategory": "니트",
+      "textile": "니트/울"
+    }
+  ]
+}

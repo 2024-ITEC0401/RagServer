@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 
 from codi_recommend import codi_recommend_bp
+from nl_codi_recommend import nl_codi_recommend_bp
 from service import service_bp
 from config import Config  # Config 클래스를 import 합니다.
 from flask_swagger import swagger
@@ -12,6 +13,7 @@ CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 app.config.from_object(Config)  # Config 클래스를 적용합니다.
 app.register_blueprint(service_bp)
 app.register_blueprint(codi_recommend_bp)
+app.register_blueprint(nl_codi_recommend_bp)
 
 # Swagger UI 설정
 SWAGGER_URL = '/swagger'  # Swagger UI에 접근할 경로
