@@ -84,7 +84,7 @@ def recommend_codi_to_gemini(user_codi, rag_data, natural_language):
     prompt = load_prompt("nl_codi_recommend_prompt.txt")
 
     prompt = prompt.replace("{{USER_CLOTHES}}", user_codi).replace("{{RECOMMENDED_OUTFITS}}", rag_data).replace("{{USER_REQUIREMENT}}", natural_language)
-
+    print("***** prompt = ", prompt)
     # 이미지 URI와 프롬프트 전송
     response = multimodal_model.generate_content(
         [
@@ -119,7 +119,7 @@ def get_codi():
 
     # 사용자 코디 데이터를 Vertex AI 임베딩 모델을 사용해 임베딩 벡터로 변환
     natural_language = nl_codi_request.get('natural_language')
-    clothing = nl_codi_request.get('clothing')
+    clothing = request.get_data(as_text=True)
 
     clothing_list = [clothing]
     natural_language_list = [natural_language]
@@ -130,19 +130,13 @@ def get_codi():
     a_result = query_similar_embeddings(PROJECT_ID, DATASET_ID, TABLE_ID, clothing_embedding[0], top_n=3)
     b_result = query_similar_embeddings(PROJECT_ID, DATASET_ID, TABLE_ID, natural_language_embedding[0], top_n=3)
 
-    print("***** a_result = ", a_result)
-    print("***** b_result = ", b_result)
-
     rag_data = ""
     for row in a_result:
         rag_data += row['codi_json']
     for row in b_result:
         rag_data += row['codi_json']
 
-    print("***** rag_data = ", rag_data)
-
     response = recommend_codi_to_gemini(clothing, rag_data, natural_language)
-    print("***** response = ", response)
     try:
         return jsonify(response), 200
     except Exception as e:

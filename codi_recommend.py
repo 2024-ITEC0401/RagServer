@@ -203,7 +203,6 @@ def get_codis():
     """
     # 사용자 옷
     user_closet = request.get_data(as_text=True)
-
     # 사용자 코디 데이터를 Vertex AI 임베딩 모델을 사용해 임베딩 벡터로 변환
     texts = [user_closet]
     user_embedding = embed_texts(texts, PROJECT_ID, LOCATION, MODEL_NAME)
