@@ -81,7 +81,7 @@ def query_similar_embeddings(project_id: str, dataset_id: str, table_id: str, us
 def recommend_codi_to_gemini(user_codi, rag_data, natural_language):
     multimodal_model = GenerativeModel(model_name="gemini-1.5-flash-002")
 
-    prompt = load_prompt("nl_codi_recommend_prompt.txt")
+    prompt = load_prompt("prompt/nl_codi_recommend_prompt.txt")
 
     prompt = prompt.replace("{{USER_CLOTHES}}", user_codi).replace("{{RECOMMENDED_OUTFITS}}", rag_data).replace("{{USER_REQUIREMENT}}", natural_language)
     print("***** prompt = ", prompt)
