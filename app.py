@@ -10,6 +10,8 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
+CORS(app, resources={r"/*": {"origins": "http://localhost:8080"}})
+CORS(app, resources={r"/*": {"origins": "http://api.look-4-me.com:8080"}})
 app.config.from_object(Config)  # Config 클래스를 적용합니다.
 app.register_blueprint(service_bp)
 app.register_blueprint(codi_recommend_bp)
