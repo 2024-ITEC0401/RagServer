@@ -113,7 +113,76 @@ def recommend_codi_to_gemini(user_codi, rag_data, natural_language):
 
 @nl_codi_recommend_bp.route("/get_nl_codi", methods=["POST"])
 def get_codi():
-
+    """
+        자연어(NL) 코디 추천 API
+        ---
+        tags:
+          - Recommendation
+        consumes:
+          - application/json
+        produces:
+          - application/json
+        parameters:
+          - in: body
+            name: body
+            required: true
+            description: 사용자가 선택한 데이터..? 사실 코디 추천 API랑 똑같음. 자연어가 추가됐음
+            schema:
+              type: object
+              properties:
+                natural_language:
+                  type: string
+                  example: "무슨무슨 옷을 추천해줘"
+                clothing:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      baseColor:
+                        type: string
+                      clothing_id:
+                        type: integer
+                      description:
+                        type: string
+                      mainCategory:
+                        type: string
+                      name:
+                        type: string
+                      pattern:
+                        type: string
+                      pointColor:
+                        type: string
+                      season:
+                        type: string
+                      style:
+                        type: string
+                      subCategory:
+                        type: string
+                      textile:
+                        type: string
+        responses:
+          200:
+            description: 자연어 생각해서 생성한 코디 1개
+            schema:
+              type: object
+              properties:
+                  clothing_ids:
+                    type: array
+                    items:
+                      type: integer
+                    example: [1, 2, 8]
+                  description:
+                    type: string
+                    example: "부드러운 울 니트와 블랙 와이드 데님의 편안한 가을 남친룩."
+                  hashtags:
+                    type: array
+                    items:
+                      type: string
+                    example: ["남친룩", "가을코디", "캐주얼", "데일리룩", "편안함"]
+                  name:
+                    type: string
+                    example: "가을 남친룩"
+    """
     # 사용자 옷
     nl_codi_request = request.get_json()
 
