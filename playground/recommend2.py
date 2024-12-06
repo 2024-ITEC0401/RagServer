@@ -1,7 +1,10 @@
 from google.cloud import bigquery, aiplatform
 from vertexai.language_models import TextEmbeddingModel, TextEmbeddingInput
-from typing import List, Generator
-
+from typing import List
+from config import load_prompt
+from vertexai.generative_models import GenerativeModel
+import re
+import json
 
 # 1. Vertex AI 임베딩 모델 사용
 def embed_texts(texts: List[str], project_id: str, location: str, model_name: str = "textembedding-gecko@003") -> List[
@@ -29,23 +32,29 @@ def query_similar_embeddings(project_id: str, dataset_id: str, table_id: str, us
 
     query = f"""
     CREATE TEMP FUNCTION cosine_similarity(vec1 ARRAY<FLOAT64>, vec2 ARRAY<FLOAT64>) AS (
-      (SELECT SUM(v1 * v2) FROM UNNEST(vec1) AS v1 WITH OFFSET i
-      JOIN UNNEST(vec2) AS v2 WITH OFFSET j ON i = j) /
-      (SQRT(SUM(POW(v, 2)) FROM UNNEST(vec1) AS v) *
-       SQRT(SUM(POW(v, 2)) FROM UNNEST(vec2) AS v))
+      (
+        SELECT SUM(v1 * v2)
+        FROM UNNEST(vec1) AS v1 WITH OFFSET i
+        JOIN UNNEST(vec2) AS v2 WITH OFFSET j ON i = j
+      ) /
+      (
+        SQRT(
+          (SELECT SUM(POW(v, 2)) FROM UNNEST(vec1) AS v)
+        ) *
+        SQRT(
+          (SELECT SUM(POW(v, 2)) FROM UNNEST(vec2) AS v)
+        )
+      )
     );
 
     WITH user_embedding AS (
-      SELECT [{user_embedding_str}] AS embedding
-    ),
-    similarities AS (
-      SELECT
-        codi_json,
-        cosine_similarity(user_embedding.embedding, embedding) AS similarity
-      FROM `{project_id}.{dataset_id}.{table_id}`
+      SELECT ARRAY[{user_embedding_str}] AS embedding
     )
-    SELECT codi_json, similarity
-    FROM similarities
+    SELECT
+      codi_json,
+      cosine_similarity(user_embedding.embedding, table_embedding.embedding) AS similarity
+    FROM `{project_id}.{dataset_id}.{table_id}` AS table_embedding
+    CROSS JOIN user_embedding
     ORDER BY similarity DESC
     LIMIT {top_n};
     """
@@ -53,6 +62,38 @@ def query_similar_embeddings(project_id: str, dataset_id: str, table_id: str, us
     query_job = client.query(query)
     return query_job.result()
 
+def recommend_codi_to_gemini(user_codi, rag_data):
+    multimodal_model = GenerativeModel(model_name="gemini-1.5-flash-002")
+
+    prompt = load_prompt("../prompt/codi_recommend_prompt.txt")
+
+    prompt = prompt.replace("{{USER_CLOTHES}}", user_codi).replace("{{RECOMMENDED_OUTFITS}}", rag_data)
+
+    # 이미지 URI와 프롬프트 전송
+    response = multimodal_model.generate_content(
+        [
+            prompt
+        ],
+        generation_config={
+            "temperature": 1,  # temperature 설정
+        }
+    )
+
+    # 불필요한 ```json 구문 제거 및 JSON 파싱
+    codis = response.text if response else "No response text found"
+    json_match = re.search(r"\{.*\}", codis, re.DOTALL)  # 중괄호로 시작하는 JSON 부분 추출
+
+    if json_match:
+        json_str = json_match.group(0)  # JSON 부분만 추출
+    else:
+        json_str = "{}"  # JSON 부분이 없을 때 빈 객체 반환
+
+    try:
+        codis_json = json.loads(json_str) if codis else {}
+    except json.JSONDecodeError as e:
+        codis_json = {"error": "Invalid JSON format received"}
+
+    return codis_json
 
 # 3. Main 함수
 def main():
@@ -63,73 +104,8 @@ def main():
     location = "us-central1"
     model_name = "textembedding-gecko@003"
 
-    # 사용자 코디 데이터
-    user_codi = '''{
-      "name": "캠퍼스 여름 캐주얼 코디",
-      "clothes": [
-        {
-          "category": "아우터",
-          "subCategory": "조끼",
-          "baseColor": "검정",
-          "pointColor": "검정",
-          "season": "여름",
-          "styles": "데일리",
-          "textile": "나일론",
-          "pattern": "무지"
-        },
-        {
-          "category": "바지",
-          "subCategory": "반바지",
-          "baseColor": "연회색",
-          "pointColor": "연회색",
-          "season": "여름",
-          "styles": "데일리",
-          "textile": "데님",
-          "pattern": "워싱"
-        },
-        {
-          "category": "신발",
-          "subCategory": "슬립온",
-          "baseColor": "검정",
-          "pointColor": "흰색",
-          "season": "여름",
-          "styles": "데일리",
-          "textile": "가죽",
-          "pattern": "무지"
-        },
-        {
-          "category": "가방",
-          "subCategory": "백팩",
-          "baseColor": "검정",
-          "pointColor": "검정",
-          "season": "여름",
-          "styles": "데일리",
-          "textile": "나일론",
-          "pattern": "무지"
-        },
-        {
-          "category": "악세서리",
-          "subCategory": "우산",
-          "baseColor": "검정",
-          "pointColor": "나무색",
-          "season": "여름",
-          "styles": "데일리",
-          "textile": "나일론",
-          "pattern": "무지"
-        }
-      ],
-      "hashtags": [
-        "#미니멀",
-        "#비",
-        "#캠퍼스",
-        "#심볼",
-        "#워싱",
-        "#여름",
-        "#캐주얼",
-        "#비코디",
-        "#코디맵"
-      ]
-    }'''
+    # 사용자 옷
+    user_codi = load_prompt("../codi_recommend_response.json")
 
     # 사용자 코디 데이터를 Vertex AI 임베딩 모델을 사용해 임베딩 벡터로 변환
     texts = [user_codi]
@@ -137,12 +113,12 @@ def main():
 
     # BigQuery에서 코사인 유사도 계산 및 상위 N개 결과 가져오기
     top_results = query_similar_embeddings(project_id, dataset_id, table_id, user_embedding[0], top_n=5)
-
+    rag_data = ""
     # 결과 출력
-    print("Top similar outfits from BigQuery:")
     for row in top_results:
-        print(f"Outfit: {row['codi_json']}, Similarity: {row['similarity']:.4f}")
+       rag_data += row['codi_json']
 
+    print(recommend_codi_to_gemini(user_codi, rag_data))
 
 if __name__ == "__main__":
     main()

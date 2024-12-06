@@ -4,7 +4,6 @@ import re
 from dotenv import load_dotenv
 from flask import Blueprint, request, jsonify, current_app
 from google.cloud import storage
-from google.oauth2 import service_account
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 from io import BytesIO
@@ -19,7 +18,7 @@ load_dotenv()
 service_bp = Blueprint('service', __name__)
 
 # GCP 설정
-PROMPT_TEXT = load_prompt("prompt.txt")  # 하드코딩된 프롬프트
+PROMPT_TEXT = load_prompt("prompt/analysis_prompt.txt")  # 하드코딩된 프롬프트
 PROJECT_ID = os.getenv("PROJECT_ID")
 LOCATION = "asia-northeast3"
 BUCKET_NAME = os.getenv("BUCKET_NAME")  # Cloud Storage 버킷 이름
@@ -154,4 +153,66 @@ def get_outfit_info():
         return jsonify(response_data)
     except Exception as e:
         current_app.logger.error(f"Error calling Gemini API: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@service_bp.route("/delete_image", methods=["DELETE"])
+def delete_image():
+    """
+    제공된 이미지 URI를 기반으로 Cloud Storage에 있는 이미지를 삭제하는 API
+    ---
+    tags:
+      - Outfit
+    parameters:
+      - name: body
+        in: body
+        required: true
+        description: 삭제할 이미지의 URI가 포함된 JSON
+        schema:
+          type: object
+          properties:
+            imageUri:
+              type: string
+              description: 삭제할 이미지의 URI
+    responses:
+      200:
+        description: 성공적으로 이미지가 삭제된 경우
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: 잘못된 요청 또는 URI가 제공되지 않은 경우
+      404:
+        description: 이미지가 존재하지 않는 경우
+      500:
+        description: 서버 오류
+    """
+    try:
+        # JSON 요청 본문에서 imageUri 추출
+        data = request.get_json()
+        image_uri = data.get("imageUri")
+
+        if not image_uri:
+            return jsonify({"error": "No image URI provided"}), 400
+
+        # URI에서 Blob 이름 추출
+        match = re.search(f"/{BUCKET_NAME}/(.+)", image_uri)
+        if not match:
+            return jsonify({"error": "Invalid image URI format"}), 400
+
+        blob_name = match.group(1)
+        bucket = storage_client.bucket(BUCKET_NAME)
+        blob = bucket.blob(blob_name)
+
+        # Blob이 존재하는지 확인
+        if not blob.exists():
+            return jsonify({"error": "Image not found in Cloud Storage"}), 404
+
+        # Blob 삭제
+        blob.delete()
+        return jsonify({"message": "Image successfully deleted"}), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error deleting image: {e}")
         return jsonify({"error": str(e)}), 500
