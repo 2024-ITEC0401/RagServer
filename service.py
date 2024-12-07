@@ -158,12 +158,14 @@ def get_outfit_info():
 @service_bp.route("/delete_image", methods=["DELETE"])
 def delete_image():
 
-    image_uri = request.args.get("imageUri")
-
-    if not image_uri:
-        return jsonify({"error": "No image URI provided"}), 400
-
     try:
+        # JSON 요청 본문에서 imageUri 추출
+        data = request.get_json()
+        image_uri = data.get("imageUri")
+
+        if not image_uri:
+            return jsonify({"error": "No image URI provided"}), 400
+
         # URI에서 Blob 이름 추출
         match = re.search(f"/{BUCKET_NAME}/(.+)", image_uri)
         if not match:
@@ -184,4 +186,3 @@ def delete_image():
     except Exception as e:
         current_app.logger.error(f"Error deleting image: {e}")
         return jsonify({"error": str(e)}), 500
-
