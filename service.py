@@ -154,3 +154,34 @@ def get_outfit_info():
     except Exception as e:
         current_app.logger.error(f"Error calling Gemini API: {e}")
         return jsonify({"error": str(e)}), 500
+
+@service_bp.route("/delete_image", methods=["DELETE"])
+def delete_image():
+
+    image_uri = request.args.get("imageUri")
+
+    if not image_uri:
+        return jsonify({"error": "No image URI provided"}), 400
+
+    try:
+        # URI에서 Blob 이름 추출
+        match = re.search(f"/{BUCKET_NAME}/(.+)", image_uri)
+        if not match:
+            return jsonify({"error": "Invalid image URI format"}), 400
+
+        blob_name = match.group(1)
+        bucket = storage_client.bucket(BUCKET_NAME)
+        blob = bucket.blob(blob_name)
+
+        # Blob이 존재하는지 확인
+        if not blob.exists():
+            return jsonify({"error": "Image not found in Cloud Storage"}), 404
+
+        # Blob 삭제
+        blob.delete()
+        return jsonify({"message": "Image successfully deleted"}), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error deleting image: {e}")
+        return jsonify({"error": str(e)}), 500
+
