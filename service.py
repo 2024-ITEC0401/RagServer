@@ -157,7 +157,37 @@ def get_outfit_info():
 
 @service_bp.route("/delete_image", methods=["DELETE"])
 def delete_image():
-
+    """
+    제공된 이미지 URI를 기반으로 Cloud Storage에 있는 이미지를 삭제하는 API
+    ---
+    tags:
+      - Outfit
+    parameters:
+      - name: body
+        in: body
+        required: true
+        description: 삭제할 이미지의 URI가 포함된 JSON
+        schema:
+          type: object
+          properties:
+            imageUri:
+              type: string
+              description: 삭제할 이미지의 URI
+    responses:
+      200:
+        description: 성공적으로 이미지가 삭제된 경우
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+      400:
+        description: 잘못된 요청 또는 URI가 제공되지 않은 경우
+      404:
+        description: 이미지가 존재하지 않는 경우
+      500:
+        description: 서버 오류
+    """
     try:
         # JSON 요청 본문에서 imageUri 추출
         data = request.get_json()
